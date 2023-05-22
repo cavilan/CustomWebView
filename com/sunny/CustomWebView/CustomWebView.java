@@ -14,48 +14,15 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.net.http.SslCertificate;
 import android.net.http.SslError;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.CancellationSignal;
-import android.os.Handler;
-import android.os.Message;
-import android.os.ParcelFileDescriptor;
-import android.print.PageRange;
-import android.print.PrintAttributes;
-import android.print.PrintDocumentAdapter;
-import android.print.PrintJob;
-import android.print.PrintManager;
+import android.os.*;
+import android.print.*;
 import android.view.MotionEvent;
 import android.view.View;
-import android.webkit.ConsoleMessage;
-import android.webkit.CookieManager;
-import android.webkit.DownloadListener;
-import android.webkit.GeolocationPermissions;
-import android.webkit.HttpAuthHandler;
-import android.webkit.JavascriptInterface;
-import android.webkit.JsPromptResult;
-import android.webkit.JsResult;
-import android.webkit.PermissionRequest;
-import android.webkit.SslErrorHandler;
-import android.webkit.ValueCallback;
-import android.webkit.WebBackForwardList;
-import android.webkit.WebChromeClient;
-import android.webkit.WebHistoryItem;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceResponse;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
+import android.webkit.*;
 import android.widget.FrameLayout;
-import com.google.appinventor.components.annotations.DesignerComponent;
-import com.google.appinventor.components.annotations.DesignerProperty;
-import com.google.appinventor.components.annotations.PropertyCategory;
-import com.google.appinventor.components.annotations.SimpleEvent;
-import com.google.appinventor.components.annotations.SimpleFunction;
-import com.google.appinventor.components.annotations.SimpleObject;
-import com.google.appinventor.components.annotations.SimpleProperty;
-import com.google.appinventor.components.annotations.UsesPermissions;
+import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewFeature;
+import com.google.appinventor.components.annotations.*;
 import com.google.appinventor.components.common.ComponentCategory;
 import com.google.appinventor.components.common.PropertyTypeConstants;
 import com.google.appinventor.components.runtime.AndroidNonvisibleComponent;
@@ -70,15 +37,10 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
-@DesignerComponent(version = 12,
-        versionName = "12.0beta",
+@DesignerComponent(version = 13,
+            versionName = "13beta",
         description = "An extended form of Web Viewer <br> Developed by Sunny Gupta",
         category = ComponentCategory.EXTENSION,
         nonVisible = true,
@@ -87,6 +49,7 @@ import java.util.Objects;
         androidMinSdk = 21)
 @SimpleObject(external = true)
 @UsesPermissions(permissionNames = "android.permission.WRITE_EXTERNAL_STORAGE,android.permission.ACCESS_DOWNLOAD_MANAGER,android.permission.ACCESS_FINE_LOCATION,android.permission.RECORD_AUDIO, android.permission.MODIFY_AUDIO_SETTINGS, android.permission.CAMERA,android.permission.VIBRATE,android.webkit.resource.VIDEO_CAPTURE,android.webkit.resource.AUDIO_CAPTURE,android.launcher.permission.INSTALL_SHORTCUT")
+@UsesLibraries(libraries = "androidx-webkit.jar")
 public final class CustomWebView extends AndroidNonvisibleComponent implements WView.SwipeCallback {
     private final Activity activity;
     private WView webView;
@@ -143,6 +106,16 @@ public final class CustomWebView extends AndroidNonvisibleComponent implements W
     private int p2d(int p) {
         return Math.round(p * deviceDensity);
     }
+    @SimpleFunction()
+    public boolean IsDarkModeSupported(){
+        return WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK) && WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK_STRATEGY);
+    }
+    @SimpleFunction()
+    public void SetDarkMode(boolean enable){
+        WebSettingsCompat.setForceDark(webView.getSettings(),
+                enable? WebSettingsCompat.FORCE_DARK_ON : WebSettingsCompat.FORCE_DARK_OFF);
+        WebSettingsCompat.setForceDarkStrategy(webView.getSettings(),WebSettingsCompat.DARK_STRATEGY_PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING);
+    }
 
     @SimpleFunction(description = "Creates the webview in given arrangement with id")
     public void CreateWebView(HVArrangement container, final int id) {
@@ -175,7 +148,7 @@ public final class CustomWebView extends AndroidNonvisibleComponent implements W
         }
     }
 
-    private void resetWebView(final WebView web) {
+    private void resetWebView(final WView web) {
         web.addJavascriptInterface(wvInterface, "AppInventor");
         MOBILE_USER_AGENT = web.getSettings().getUserAgentString();
         web.getSettings().setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
@@ -269,20 +242,21 @@ public final class CustomWebView extends AndroidNonvisibleComponent implements W
                 }
             }
         });
-        web.setOnScrollChangeListener(new View.OnScrollChangeListener() {
-            @Override
-            public void onScrollChange(View view, int i, int i1, int i2, int i3) {
-                OnScrollChanged(getIndex(web), i, i1, i2, i3, web.canScrollHorizontally(-1), web.canScrollHorizontally(1));
-            }
-        });
-        /* added in v11
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O){
-            web.getSettings().setSaveFormData(true);
-        }else{
-            AutofillManager autofillManager = context.getSystemService(AutofillManager.class);
-            autofillManager.requestAutofill(webView);
+        if (Build.VERSION.SDK_INT >= 23) {
+            web.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+                @Override
+                public void onScrollChange(View view, int i, int i1, int i2, int i3) {
+                    OnScrollChanged(getIndex(web), i, i1, i2, i3, web.canScrollHorizontally(-1), web.canScrollHorizontally(1));
+                }
+            });
+        }else {
+            web.setScrollChangeListener(new WView.OnScrollChangeListener(){
+                @Override
+                public void onScrollChange(Context v, int i, int i1, int i2, int i3) {
+                    OnScrollChanged(getIndex(web), i, i1, i2, i3, web.canScrollHorizontally(-1), web.canScrollHorizontally(1));
+                }
+            });
         }
-        */
     }
 
     @SimpleFunction(description = "Returns a list of used ids")
@@ -1716,11 +1690,12 @@ public final class CustomWebView extends AndroidNonvisibleComponent implements W
     }
 
     // v12beta
-
+	/*
     @SimpleEvent(description = "A new request is intercepted or recorded <br> Added by Xoma")
     public void RequestIntercepted(String url, YailDictionary requestHeaders) {
         EventDispatcher.dispatchEvent(this, "RequestIntercepted", url, requestHeaders);
     }
+	*/
 
     @SimpleFunction(description = "Clears the form data of the webview <br> Added by Xoma")
     public void ClearFormData(final int id) {

@@ -1,12 +1,14 @@
 package com.sunny.CustomWebView;
 
 import android.content.Context;
-import android.webkit.WebView;
-import android.view.MotionEvent;
 import android.view.GestureDetector;
 import android.view.GestureDetector.SimpleOnGestureListener;
+import android.view.MotionEvent;
+import android.webkit.WebView;
+
 public class WView extends WebView {
-    GestureDetector gd;
+    private final GestureDetector gd;
+    private OnScrollChangeListener onScrollChangeListener;
     public WView(final int id,Context context,final SwipeCallback callback) {
         super(context);
         SimpleOnGestureListener onGestureListener = new SimpleOnGestureListener() {
@@ -77,4 +79,32 @@ public class WView extends WebView {
     public interface SwipeCallback{
         void onSwipe(int i,int i1);
     }
+    @Override
+    protected void onScrollChanged(int l, int t, int oldl, int oldt) {
+        super.onScrollChanged(l, t, oldl, oldt);
+        if (onScrollChangeListener != null) {
+            onScrollChangeListener.onScrollChange(getContext(), l, t, oldl, oldt);
+        }
+    }
+
+    public void setScrollChangeListener(OnScrollChangeListener onScrollChangeListener) {
+        this.onScrollChangeListener = onScrollChangeListener;
+    }
+
+    public OnScrollChangeListener getOnScrollChangeListener() {
+        return onScrollChangeListener;
+    }
+
+    public interface OnScrollChangeListener {
+        /**
+         * Called when the scroll position of a view changes.
+         *  @param v          The view whose scroll position has changed.
+         * @param scrollX    Current horizontal scroll origin.
+         * @param scrollY    Current vertical scroll origin.
+         * @param oldScrollX Previous horizontal scroll origin.
+         * @param oldScrollY Previous vertical scroll origin.
+         */
+        void onScrollChange(Context v, int scrollX, int scrollY, int oldScrollX, int oldScrollY);
+    }
+
 }
